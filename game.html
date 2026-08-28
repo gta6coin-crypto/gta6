@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vice City Escape | GTA6</title>
+<style>
+    :root {
+        --bg: #0a0314;
+        --pink: #ff007f;
+        --amber: #ffaa00;
+        --cyan: #00f0ff;
+        --lav: #bfa8e6;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Courier New', monospace; }
+    body {
+        background: var(--bg);
+        color: #fff;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 20px;
+    }
+    .game-container {
+        text-align: center;
+    }
+    h1 {
+        font-size: 2.5rem;
+        background: linear-gradient(45deg, var(--pink), var(--amber), var(--cyan));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 20px;
+    }
+    canvas {
+        border: 3px solid var(--cyan);
+        background: linear-gradient(180deg, #12042a, #35084a);
+        box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
+        display: block;
+        margin: 0 auto 20px;
+        max-width: 100%;
+        height: auto;
+    }
+    .hud {
+        display: flex;
+        justify-content: space-around;
+        font-size: 1.2rem;
+        margin-bottom: 20px;
+        max-width: 800px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    @media (max-width: 480px) {
+        h1 { font-size: 1.8rem; }
+        .hud { font-size: 0.9rem; gap: 10px; }
+        #mobileControls { gap: 5px; }
+        #mobileControls button { padding: 10px 15px; font-size: 0.9rem; }
+    }
+    .stat {
+        color: var(--cyan);
+        font-weight: bold;
+        text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.8);
+        letter-spacing: 1px;
+    }
+    .stat span { color: var(--amber); }
+    .controls {
+        margin-top: 20px;
+        font-size: 0.9rem;
+        color: var(--lav);
+        max-width: 600px;
+        line-height: 1.6;
+    }
+    .controls p { margin-bottom: 8px; }
+    .key { color: var(--pink); font-weight: bold; }
+    button {
+        background: var(--pink);
+        border: none;
+        color: var(--bg);
+        padding: 12px 30px;
+        font-size: 1rem;
+        font-weight: bold;
+        border-radius: 6px;
+        cursor: pointer;
+        margin-top: 15px;
+        transition: background 0.2s;
+    }
+    button:hover { background: var(--amber); }
+    #mobileControls { display: flex; }
+    .game-over {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(10, 3, 20, 0.95);
+        border: 2px solid var(--pink);
+        padding: 40px;
+        border-radius: 12px;
+        text-align: center;
+        display: none;
+        z-index: 100;
+    }
+    .game-over h2 {
+        font-size: 2rem;
+        color: var(--amber);
+        margin-bottom: 15px;
+    }
+    .game-over p {
+        font-size: 1.3rem;
+        color: var(--cyan);
+        margin-bottom: 20px;
+    }
+</style>
+</head>
+<body>
+
+<div class="game-container">
+    <h1>VICE CITY ESCAPE</h1>
+    
+    <div class="hud">
+        <div class="stat">SCORE: <span id="score">0</span></div>
+        <div class="stat">LIVES: <span id="lives">3</span></div>
+        <div class="stat">WAVE: <span id="wave">1</span></div>
+        <div class="stat">UPGRADES: <span id="upgrades" style="color: var(--amber);">—</span></div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div class="controls" id="desktopControls" style="display: none;">
+        <p><span class="key">← →</span> Move | <span class="key">SPACE</span> Jump | <span class="key">CTRL</span> Shoot cops</p>
+        <p>Escape the cops, avoid roadblocks, survive Vice City.</p>
+    </div>
+
+    <div id="mobileControls" style="margin-top: 20px; gap: 10px; justify-content: center; flex-wrap: wrap; display: none;">
+        <button id="leftBtn" style="background: var(--cyan); padding: 15px 25px; font-size: 1.2rem;">← LEFT</button>
+        <button id="jumpBtn" style="background: var(--amber); padding: 15px 25px; font-size: 1.2rem;">↑ JUMP</button>
+        <button id="shootBtn" style="background: var(--pink); padding: 15px 25px; font-size: 1.2rem;">SHOOT</button>
+        <button id="rightBtn" style="background: var(--cyan); padding: 15px 25px; font-size: 1.2rem;">RIGHT →</button>
+    </div>
+
+    <button onclick="location.href='https://gta6coin-crypto.github.io/gta6/'" style="margin-top: 15px;">Back to Main</button>
+</div>
+
+<div class="game-over" id="gameOverScreen">
+    <h2>BUSTED!</h2>
+    <p>FINAL SCORE: <span id="finalScore">0</span></p>
+    <button onclick="location.reload()">PLAY AGAIN</button>
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// Responsive canvas
+function resizeCanvas() {
+    const maxWidth = Math.min(800, window.innerWidth - 40);
+    const ratio = 800 / 400;
+    canvas.width = maxWidth;
+    canvas.height = maxWidth / ratio;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// Game vars
+let score = 0, lives = 3, wave = 1;
+let gameActive = true;
+let wantedLevel = 0;
+let wantedDecayTimer = 0;
+
+// Colors
+const colors = { bg: '#0a0314', pink: '#ff007f', amber: '#ffaa00', cyan: '#00f0ff', lav: '#bfa8e6' };
+
+// Player
+const player = {
+    x: 100, y: canvas.height - 80,
+    w: 20, h: 40,
+    vy: 0, jumping: false,
+    dx: 0,
+    shoot: false,
+    hasShield: false,
+    hasShotgun: false,
+    hasRapidFire: false,
+    shootCooldown: 0
+};
+
+// Game objects
+let bullets = [];
+let enemies = [];
+let obstacles = [];
+let pickups = [];
+let spawnTimer = 0;
+let waveTimer = 0;
+let obstacleSpawnTimer = 0;
+let pickupSpawnTimer = 0;
+
+function drawRect(x, y, w, h, color) {
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, w, h);
+}
+
+function drawCityscape() {
+    // Draw pixelated buildings silhouette
+    ctx.fillStyle = 'rgba(20, 8, 38, 0.6)';
+    const buildings = [
+        { x: 0, h: 80 },
+        { x: 120, h: 120 },
+        { x: 240, h: 100 },
+        { x: 360, h: 140 },
+        { x: 480, h: 90 },
+        { x: 600, h: 110 },
+        { x: 720, h: 100 }
+    ];
+    buildings.forEach(b => {
+        drawRect(b.x, canvas.height - b.h - 20, 110, b.h, 'rgba(100, 20, 100, 0.4)');
+        // Windows
+        ctx.fillStyle = colors.amber;
+        for (let y = 0; y < b.h; y += 20) {
+            for (let x = 0; x < 110; x += 20) {
+                ctx.fillRect(b.x + x + 3, canvas.height - b.h - 20 + y + 3, 8, 8);
+            }
+        }
+    });
+}
+
+function drawWantedLevel() {
+    // Draw wanted level stars in top right
+    const starX = canvas.width - 100;
+    const starY = 15;
+    ctx.fillStyle = colors.amber;
+    ctx.font = '20px Arial';
+    ctx.textAlign = 'right';
+    ctx.fillText('WANTED', starX + 50, starY);
+    
+    ctx.font = 'bold 24px Arial';
+    for (let i = 0; i < wantedLevel; i++) {
+        ctx.fillText('★', starX - i * 22, starY + 30);
+    }
+}
+
+function drawPlayer() {
+    // Body (white shirt)
+    drawRect(player.x, player.y + 10, player.w, player.h - 10, '#ffffff');
+    // Head
+    drawRect(player.x + 4, player.y, player.w - 8, 10, colors.amber);
+}
+
+function updatePlayer() {
+    // Gravity
+    player.vy += 0.6;
+    player.y += player.vy;
+    
+    // Ground collision
+    if (player.y + player.h >= canvas.height - 20) {
+        player.y = canvas.height - player.h - 20;
+        player.vy = 0;
+        player.jumping = false;
+    }
+    
+    // Horizontal movement
+    player.x += player.dx;
+    if (player.x < 0) player.x = 0;
+    if (player.x + player.w > canvas.width) player.x = canvas.width - player.w;
+    
+    // Shooting with cooldown
+    player.shootCooldown--;
+    if (player.shoot && player.shootCooldown <= 0) {
+        const fireRate = player.hasRapidFire ? 5 : 12;
+        player.shootCooldown = fireRate;
+        
+        if (player.hasShotgun) {
+            // Shotgun: 3 pellets spread
+            bullets.push({ x: player.x + player.w / 2, y: player.y + 10, vx: 8, vy: -2, w: 6, h: 3 });
+            bullets.push({ x: player.x + player.w / 2, y: player.y + 10, vx: 8, vy: 0, w: 6, h: 3 });
+            bullets.push({ x: player.x + player.w / 2, y: player.y + 10, vx: 8, vy: 2, w: 6, h: 3 });
+        } else {
+            // Normal: single bullet
+            bullets.push({ x: player.x + player.w / 2, y: player.y + 10, vx: 8, vy: 0, w: 8, h: 4 });
+        }
+        player.shoot = false;
+    }
+}
+
+function drawEnemies() {
+    enemies.forEach(e => {
+        drawRect(e.x, e.y, e.w, e.h, colors.cyan);
+        // Eyes
+        ctx.fillStyle = colors.bg;
+        ctx.fillRect(e.x + 3, e.y + 3, 3, 3);
+        ctx.fillRect(e.x + e.w - 6, e.y + 3, 3, 3);
+    });
+}
+
+function drawObstacles() {
+    obstacles.forEach(o => {
+        drawRect(o.x, o.y, o.w, o.h, colors.lav);
+        // Grid pattern
+        ctx.strokeStyle = colors.bg;
+        ctx.lineWidth = 1;
+        for (let i = 0; i < o.w; i += 8) {
+            ctx.beginPath();
+            ctx.moveTo(o.x + i, o.y);
+            ctx.lineTo(o.x + i, o.y + o.h);
+            ctx.stroke();
+        }
+    });
+}
+
+function drawPickups() {
+    pickups.forEach(p => {
+        drawRect(p.x, p.y, p.w, p.h, p.color);
+        // Icon
+        ctx.fillStyle = colors.bg;
+        if (p.type === 'armor') {
+            ctx.fillRect(p.x + 2, p.y + 2, p.w - 4, p.h - 4);
+            ctx.strokeStyle = p.color;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(p.x + 2, p.y + 2, p.w - 4, p.h - 4);
+        } else if (p.type === 'shotgun') {
+            ctx.fillRect(p.x + 3, p.y + 4, 4, 8);
+            ctx.fillRect(p.x + 9, p.y + 4, 4, 8);
+        } else if (p.type === 'rapidfire') {
+            ctx.fillRect(p.x + 4, p.y + 3, 2, 10);
+            ctx.fillRect(p.x + 8, p.y + 3, 2, 10);
+        }
+    });
+}
+
+function updateEnemies() {
+    enemies = enemies.filter(e => {
+        e.x -= e.vx;
+        
+        // Collision with player
+        if (e.x < player.x + player.w && e.x + e.w > player.x &&
+            e.y < player.y + player.h && e.y + e.h > player.y) {
+            
+            if (player.hasShield) {
+                player.hasShield = false;
+            } else {
+                lives--;
+                document.getElementById('lives').innerText = lives;
+                if (lives <= 0) endGame();
+            }
+            return false;
+        }
+        
+        return e.x + e.w > 0;
+    });
+}
+
+function updateObstacles() {
+    obstacles = obstacles.filter(o => {
+        o.x -= o.vx;
+        
+        // Collision with player
+        if (o.x < player.x + player.w && o.x + o.w > player.x &&
+            o.y < player.y + player.h && o.y + o.h > player.y) {
+            
+            if (player.hasShield) {
+                player.hasShield = false;
+            } else {
+                lives--;
+                document.getElementById('lives').innerText = lives;
+                if (lives <= 0) endGame();
+            }
+            return false;
+        }
+        
+        return o.x + o.w > 0;
+    });
+}
+
+function spawnEnemy() {
+    const waveSpeedMult = 1 + (wave - 1) * 0.3;
+    // Random height: top, middle, or bottom
+    const heights = [
+        canvas.height - 100,  // top
+        canvas.height - 70,   // middle
+        canvas.height - 60    // bottom
+    ];
+    const y = heights[Math.floor(Math.random() * heights.length)];
+    
+    enemies.push({
+        x: canvas.width,
+        y: y,
+        w: 16,
+        h: 24,
+        vx: 2 + Math.random() * waveSpeedMult
+    });
+}
+
+function spawnObstacle() {
+    const waveSpeedMult = 1 + (wave - 1) * 0.2;
+    obstacles.push({
+        x: canvas.width,
+        y: canvas.height - 40,
+        w: 30 + Math.random() * 20,
+        h: 40,
+        vx: 3 + Math.random() * waveSpeedMult
+    });
+}
+
+function spawnPickup() {
+    const types = ['armor', 'shotgun', 'rapidfire'];
+    const type = types[Math.floor(Math.random() * types.length)];
+    const colors_map = { armor: colors.cyan, shotgun: colors.amber, rapidfire: colors.pink };
+    
+    pickups.push({
+        x: canvas.width,
+        y: 80 + Math.random() * (canvas.height - 160),
+        w: 16,
+        h: 16,
+        vx: 2,
+        type: type,
+        color: colors_map[type]
+    });
+}
+
+function updatePickups() {
+    pickups = pickups.filter(p => {
+        p.x -= p.vx;
+        
+        // Collision with player
+        if (p.x < player.x + player.w && p.x + p.w > player.x &&
+            p.y < player.y + player.h && p.y + p.h > player.y) {
+            
+            if (p.type === 'armor') {
+                player.hasShield = true;
+            } else if (p.type === 'shotgun') {
+                player.hasShotgun = true;
+            } else if (p.type === 'rapidfire') {
+                player.hasRapidFire = true;
+            }
+            
+            return false;
+        }
+        
+        return p.x + p.w > 0;
+    });
+}
+
+function drawBullets() {
+    bullets.forEach(b => drawRect(b.x, b.y, b.w, b.h, colors.amber));
+}
+
+function updateBullets() {
+    bullets = bullets.filter(b => {
+        b.x += b.vx;
+        if (b.vy !== undefined) b.y += b.vy;
+        
+        // Check enemy collision
+        for (let i = 0; i < enemies.length; i++) {
+            const e = enemies[i];
+            if (b.x < e.x + e.w && b.x + b.w > e.x &&
+                b.y < e.y + e.h && b.y + b.h > e.y) {
+                enemies.splice(i, 1);
+                score += 10;
+                wantedLevel = Math.min(wantedLevel + 1, 6);
+                document.getElementById('score').innerText = score;
+                return false;
+            }
+        }
+        
+        return b.x < canvas.width;
+    });
+}
+
+function gameLoop() {
+    // Clear
+    drawRect(0, 0, canvas.width, canvas.height, colors.bg);
+    
+    if (!gameActive) return;
+    
+    // Update
+    updatePlayer();
+    updateEnemies();
+    updateObstacles();
+    updatePickups();
+    updateBullets();
+    
+    // Spawn obstacles (more frequent)
+    obstacleSpawnTimer++;
+    if (obstacleSpawnTimer > Math.max(80 - wave * 5, 40)) {
+        spawnObstacle();
+        obstacleSpawnTimer = 0;
+    }
+    
+    // Spawn pickups (less frequent)
+    pickupSpawnTimer++;
+    if (pickupSpawnTimer > 200 - wave * 10) {
+        spawnPickup();
+        pickupSpawnTimer = 0;
+    }
+    
+    // Spawn enemies (less frequent now, but faster at higher wanted levels)
+    spawnTimer++;
+    const spawnRate = Math.max(120 - wave * 8 - wantedLevel * 15, 30);
+    if (spawnTimer > spawnRate) {
+        spawnEnemy();
+        spawnTimer = 0;
+    }
+    
+    // Wave progression
+    waveTimer++;
+    if (waveTimer > 600) {
+        wave++;
+        waveTimer = 0;
+        document.getElementById('wave').innerText = wave;
+    }
+    
+    // Wanted level decay
+    wantedDecayTimer++;
+    if (wantedDecayTimer > 180) {
+        if (wantedLevel > 0) wantedLevel--;
+        wantedDecayTimer = 0;
+    }
+    
+    // Update upgrades display
+    let upgrades = [];
+    if (player.hasShield) upgrades.push('A');
+    if (player.hasShotgun) upgrades.push('S');
+    if (player.hasRapidFire) upgrades.push('R');
+    document.getElementById('upgrades').innerText = upgrades.length > 0 ? upgrades.join(' ') : '—';
+    
+    // Draw
+    drawRect(0, 0, canvas.width, canvas.height, colors.bg);
+    drawCityscape();
+    drawRect(0, canvas.height - 20, canvas.width, 20, colors.cyan);
+    // Street markings
+    ctx.strokeStyle = 'rgba(255, 170, 0, 0.3)';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < canvas.width; i += 40) {
+        ctx.beginPath();
+        ctx.moveTo(i, canvas.height - 10);
+        ctx.lineTo(i + 20, canvas.height - 10);
+        ctx.stroke();
+    }
+    drawPlayer();
+    drawEnemies();
+    drawObstacles();
+    drawPickups();
+    drawBullets();
+    drawWantedLevel();
+    
+    requestAnimationFrame(gameLoop);
+}
+
+function endGame() {
+    gameActive = false;
+    document.getElementById('finalScore').innerText = score;
+    document.getElementById('gameOverScreen').style.display = 'block';
+}
+
+// Input
+const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+if (isMobile) {
+    document.getElementById('mobileControls').style.display = 'flex';
+    
+    const leftBtn = document.getElementById('leftBtn');
+    const rightBtn = document.getElementById('rightBtn');
+    const jumpBtn = document.getElementById('jumpBtn');
+    const shootBtn = document.getElementById('shootBtn');
+    
+    leftBtn.addEventListener('touchstart', () => player.dx = -5);
+    leftBtn.addEventListener('touchend', () => player.dx = 0);
+    rightBtn.addEventListener('touchstart', () => player.dx = 5);
+    rightBtn.addEventListener('touchend', () => player.dx = 0);
+    
+    jumpBtn.addEventListener('touchstart', () => {
+        if (!player.jumping) {
+            player.vy = -12;
+            player.jumping = true;
+        }
+    });
+    
+    shootBtn.addEventListener('touchstart', () => player.shoot = true);
+} else {
+    document.getElementById('desktopControls').style.display = 'block';
+}
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft') player.dx = -5;
+    if (e.key === 'ArrowRight') player.dx = 5;
+    if (e.key === ' ' && !player.jumping) {
+        player.vy = -12;
+        player.jumping = true;
+    }
+    if (e.ctrlKey) player.shoot = true;
+});
+
+document.addEventListener('keyup', e => {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') player.dx = 0;
+});
+
+gameLoop();
+</script>
+
+</body>
+</html>
