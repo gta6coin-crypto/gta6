@@ -290,6 +290,16 @@
         </div>
     </div>
 
+    <div class="contract-container" style="margin-top: 20px;">
+        <div class="contract-title">Game Launch</div>
+        <div style="margin: 15px 0; font-size: 1.1rem; font-weight: bold; color: var(--amber);">
+            <div id="countdown" style="margin-bottom: 12px;">LAUNCHING IN: --:--:--</div>
+        </div>
+        <a href="game.html" style="display: inline-block; padding: 12px 35px; background: linear-gradient(45deg, var(--pink), var(--amber)); color: #fff; text-decoration: none; font-weight: bold; border-radius: 6px; text-transform: uppercase; letter-spacing: 1.5px; box-shadow: 0 0 15px rgba(255, 0, 128, 0.4); transition: transform 0.2s; cursor: pointer;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+            PLAY GAME
+        </a>
+    </div>
+
     <div class="main-container">
         <div class="section-title">How To Buy</div>
         <div class="steps">
@@ -341,6 +351,31 @@
 
 <script>
     (function () {
+        // Countdown timer - GTA VI launch November 19, 2026
+        const launchDate = new Date(2026, 10, 19); // November 19, 2026 (months are 0-indexed)
+        
+        function updateCountdown() {
+            const now = new Date().getTime();
+            const distance = launchDate.getTime() - now;
+            
+            if (distance < 0) {
+                document.getElementById('countdown').innerHTML = 'LIVE NOW';
+                return;
+            }
+            
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+            
+            const pad = (n) => n < 10 ? '0' + n : n;
+            document.getElementById('countdown').innerHTML = `LAUNCHING IN: ${pad(days)}:${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+        }
+        
+        updateCountdown();
+        setInterval(updateCountdown, 1000);
+        
+        // Copy button
         var btn = document.getElementById('copy');
         var ca = document.getElementById('ca');
         btn.addEventListener('click', function () {
