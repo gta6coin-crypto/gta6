@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wanted Poster Generator | GTA6</title>
+<style>
+    :root {
+        --bg: #0a0314;
+        --pink: #ff007f;
+        --amber: #ffaa00;
+        --cyan: #00f0ff;
+        --lav: #bfa8e6;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Courier New', monospace; }
+    body {
+        background: var(--bg);
+        color: #fff;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 20px;
+    }
+    .container { max-width: 900px; width: 100%; }
+    h1 {
+        font-size: 2.5rem;
+        background: linear-gradient(45deg, var(--pink), var(--amber), var(--cyan));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 30px;
+        text-align: center;
+    }
+    .tools {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+        margin-bottom: 30px;
+    }
+    .tool-section {
+        background: rgba(25, 10, 45, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 20px;
+    }
+    .tool-section h2 {
+        font-size: 1.3rem;
+        color: var(--amber);
+        margin-bottom: 15px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .tool-section p { font-size: 0.9rem; color: var(--lav); margin-bottom: 10px; }
+    button {
+        background: linear-gradient(45deg, var(--pink), var(--amber));
+        border: none;
+        color: #000;
+        padding: 10px 20px;
+        font-size: 0.95rem;
+        font-weight: bold;
+        border-radius: 6px;
+        cursor: pointer;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        transition: transform 0.2s;
+        width: 100%;
+        margin-bottom: 10px;
+    }
+    button:hover { transform: scale(1.02); }
+    button:active { transform: scale(0.98); }
+    input[type="file"] { display: none; }
+    .name-list {
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px dashed var(--cyan);
+        border-radius: 6px;
+        padding: 10px;
+        max-height: 200px;
+        overflow-y: auto;
+        margin-bottom: 10px;
+    }
+    .name-item {
+        background: rgba(255, 0, 128, 0.1);
+        border-left: 3px solid var(--pink);
+        padding: 8px;
+        margin-bottom: 5px;
+        cursor: pointer;
+        border-radius: 3px;
+        font-weight: bold;
+        transition: background 0.2s;
+    }
+    .name-item:hover { background: rgba(255, 0, 128, 0.2); }
+    .name-item.selected { background: rgba(255, 0, 128, 0.3); }
+    .poster-preview {
+        background: rgba(25, 10, 45, 0.6);
+        border: 2px solid var(--amber);
+        border-radius: 12px;
+        padding: 20px;
+        grid-column: 1 / -1;
+        text-align: center;
+    }
+    .poster-preview h2 { margin-bottom: 15px; }
+    canvas {
+        border: 3px solid var(--cyan);
+        background: #000;
+        max-width: 100%;
+        margin-bottom: 15px;
+    }
+    .poster-controls {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+    .poster-controls button { margin-bottom: 0; }
+    input[type="number"] {
+        background: rgba(0, 0, 0, 0.6);
+        border: 1px solid var(--cyan);
+        color: var(--amber);
+        padding: 8px;
+        border-radius: 6px;
+        font-weight: bold;
+        width: 100%;
+        margin-bottom: 10px;
+        font-family: 'Courier New', monospace;
+    }
+    .label { font-size: 0.8rem; color: var(--cyan); text-transform: uppercase; margin-bottom: 5px; display: block; }
+    .footer {
+        text-align: center;
+        font-size: 0.85rem;
+        color: var(--lav);
+        margin-top: 20px;
+    }
+    .footer a { color: var(--cyan); text-decoration: none; }
+    @media (max-width: 700px) {
+        .tools { grid-template-columns: 1fr; }
+        h1 { font-size: 1.8rem; }
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1>WANTED POSTER GENERATOR</h1>
+    
+    <div class="tools">
+        <div class="tool-section">
+            <h2>1. Generate Name</h2>
+            <p>Click to generate a GTA-style criminal name.</p>
+            <button onclick="generateName()">GENERATE NAME</button>
+            <div class="name-list" id="nameList"></div>
+            <button onclick="copySelectedName()" style="background: linear-gradient(45deg, var(--cyan), var(--lav));">COPY TO CLIPBOARD</button>
+        </div>
+
+        <div class="tool-section">
+            <h2>2. Upload Photo</h2>
+            <p>Pick a mugshot photo. It'll be heavily pixelated for anonymity.</p>
+            <button onclick="document.getElementById('fileInput').click()">CHOOSE FILE</button>
+            <input type="file" id="fileInput" accept="image/*" onchange="loadImage(event)">
+            <div id="imageStatus" style="font-size: 0.85rem; color: var(--amber);">No image selected</div>
+        </div>
+
+        <div class="poster-preview">
+            <h2>WANTED POSTER PREVIEW</h2>
+            <canvas id="posterCanvas" width="400" height="550"></canvas>
+            <div>
+                <span class="label">Bounty Amount ($)</span>
+                <input type="number" id="bountyAmount" value="50000" min="1000" max="9999999" step="1000" onchange="redrawPoster()">
+            </div>
+            <div class="poster-controls">
+                <button onclick="downloadPoster()">DOWNLOAD</button>
+                <button onclick="shareOnX()">SHARE ON X</button>
+            </div>
+            <div class="footer" style="margin-top: 15px;">
+                <p>Tag us <strong>@gta6coin</strong> when you share!</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p><a href="https://gta6coin-crypto.github.io/gta6/">← Back to Main</a></p>
+    </div>
+</div>
+
+<script>
+const names = [
+    'Tony Scarface', 'Vinny the Brick', 'Dirty Mikey', 'Sal the Knife', 'Big Dom',
+    'Frankie Two Guns', 'Gino the Snake', 'Eddie the Fixer', 'Carmine the Crusher',
+    'Vito Bloodline', 'Rocco the Ripper', 'Paulie Fingers', 'Nino the Natty',
+    'Stevie Switchblade', 'Lenny the Looter', 'Carmelo the Kid', 'Bruno Bruiser',
+    'Sonny Silencer', 'Marco the Menace', 'Dominic the Don', 'Ricky Racket',
+    'Jacuzzi Joe', 'Ziggy Zamboni', 'Turbo Tim', 'Velocity Vinny',
+    'Laser Lance', 'Concrete Chico', 'Pistol Pete', 'Boom Boom Barry'
+];
+
+let selectedName = null;
+let uploadedImage = null;
+
+function generateName() {
+    selectedName = names[Math.floor(Math.random() * names.length)];
+    const list = document.getElementById('nameList');
+    const item = document.createElement('div');
+    item.className = 'name-item selected';
+    item.textContent = selectedName;
+    item.onclick = () => selectName(selectedName);
+    
+    if (list.children.length > 10) list.removeChild(list.firstChild);
+    list.insertBefore(item, list.firstChild);
+    
+    redrawPoster();
+}
+
+function selectName(name) {
+    selectedName = name;
+    document.querySelectorAll('.name-item').forEach(el => el.classList.remove('selected'));
+    event.target.classList.add('selected');
+    redrawPoster();
+}
+
+function copySelectedName() {
+    if (!selectedName) {
+        alert('Generate a name first!');
+        return;
+    }
+    navigator.clipboard.writeText(selectedName).then(() => {
+        alert('Copied: ' + selectedName);
+    });
+}
+
+function loadImage(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+            uploadedImage = img;
+            document.getElementById('imageStatus').textContent = '✓ Image loaded: ' + file.name;
+            redrawPoster();
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function pixelate(ctx, imageData, pixelSize) {
+    const data = imageData.data;
+    for (let i = 0; i < imageData.width; i += pixelSize) {
+        for (let j = 0; j < imageData.height; j += pixelSize) {
+            const pixelIndex = (j * imageData.width + i) * 4;
+            const r = data[pixelIndex];
+            const g = data[pixelIndex + 1];
+            const b = data[pixelIndex + 2];
+            
+            for (let di = 0; di < pixelSize && i + di < imageData.width; di++) {
+                for (let dj = 0; dj < pixelSize && j + dj < imageData.height; dj++) {
+                    const idx = ((j + dj) * imageData.width + (i + di)) * 4;
+                    data[idx] = r;
+                    data[idx + 1] = g;
+                    data[idx + 2] = b;
+                }
+            }
+        }
+    }
+}
+
+function redrawPoster() {
+    const canvas = document.getElementById('posterCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Background
+    ctx.fillStyle = '#8b0000';
+    ctx.fillRect(0, 0, 400, 550);
+    
+    // Border
+    ctx.strokeStyle = '#ffff00';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(10, 10, 380, 530);
+    
+    // WANTED text
+    ctx.fillStyle = '#ffff00';
+    ctx.font = 'bold 60px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('WANTED', 200, 70);
+    
+    // Image
+    if (uploadedImage) {
+        const imgCanvas = document.createElement('canvas');
+        imgCanvas.width = 250;
+        imgCanvas.height = 250;
+        const imgCtx = imgCanvas.getContext('2d');
+        imgCtx.drawImage(uploadedImage, 0, 0, 250, 250);
+        
+        const imageData = imgCtx.getImageData(0, 0, 250, 250);
+        pixelate(imgCtx, imageData, 16);
+        imgCtx.putImageData(imageData, 0, 0);
+        
+        ctx.drawImage(imgCanvas, 75, 100);
+    } else {
+        ctx.fillStyle = '#333';
+        ctx.fillRect(75, 100, 250, 250);
+        ctx.fillStyle = '#666';
+        ctx.font = '20px Arial';
+        ctx.fillText('NO IMAGE', 200, 230);
+    }
+    
+    // Name
+    ctx.fillStyle = '#ffff00';
+    ctx.font = 'bold 24px Arial';
+    ctx.fillText(selectedName || 'CRIMINAL', 200, 380);
+    
+    // Bounty
+    const bounty = document.getElementById('bountyAmount').value;
+    ctx.fillStyle = '#00ff00';
+    ctx.font = 'bold 32px Arial';
+    ctx.fillText('$' + parseInt(bounty).toLocaleString(), 200, 450);
+    
+    ctx.fillStyle = '#ffff00';
+    ctx.font = '16px Arial';
+    ctx.fillText('REWARD', 200, 475);
+    
+    // Footer
+    ctx.fillStyle = '#ffff00';
+    ctx.font = '12px Arial';
+    ctx.fillText('VICE CITY POLICE DEPARTMENT', 200, 520);
+}
+
+function downloadPoster() {
+    if (!selectedName || !uploadedImage) {
+        alert('Upload a photo and generate a name first!');
+        return;
+    }
+    const canvas = document.getElementById('posterCanvas');
+    const link = document.createElement('a');
+    link.href = canvas.toDataURL('image/png');
+    link.download = selectedName.replace(/\s+/g, '_') + '_wanted.png';
+    link.click();
+}
+
+function shareOnX() {
+    if (!selectedName || !uploadedImage) {
+        alert('Upload a photo and generate a name first!');
+        return;
+    }
+    const text = `I just created a WANTED poster for ${selectedName}! 🔫 Check out the Vice City Wanted Poster Generator and share yours! @gta6coin #GTA6`;
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=https://gta6coin-crypto.github.io/gta6/`;
+    window.open(url, '_blank');
+}
+
+// Initial draw
+redrawPoster();
+</script>
+
+</body>
+</html>
